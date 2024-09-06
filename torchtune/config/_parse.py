@@ -11,7 +11,7 @@ from typing import Any, Callable, List, Tuple
 
 from omegaconf import DictConfig, OmegaConf
 
-from torchtune.config._utils import _merge_yaml_and_cli_args
+from torchtune.config._utils import _merge_yaml_and_cli_args, _validate_paths
 
 
 Recipe = Callable[[DictConfig], Any]
@@ -96,6 +96,7 @@ def parse(recipe_main: Recipe) -> Callable[[Recipe], Any]:
         yaml_args, cli_args = parser.parse_known_args()
         conf = _merge_yaml_and_cli_args(yaml_args, cli_args)
 
+        _validate_paths(conf)
         sys.exit(recipe_main(conf))
 
     return wrapper

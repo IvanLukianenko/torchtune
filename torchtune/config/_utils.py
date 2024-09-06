@@ -3,11 +3,11 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-
+import os 
 from argparse import Namespace
 from importlib import import_module
 from types import ModuleType
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Literal
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -248,3 +248,43 @@ def _get_prompt_template(
         raise ValueError(
             f"Prompt template must be a dotpath string or dictionary with custom template, got {type(prompt_template)}"
         )
+
+def _validate_paths(cfg: DictConfig) -> None:
+    """
+    Validates paths on config:
+
+    Args: 
+        cfg (DictConfig): config for recipe
+
+    Raises: 
+        FileNotFoundError: If any path does not exist
+    """
+    def validate_path(path, path_type:Literal['file', 'dir']):
+        """Validate if a path exists and is of the correct type (file or directory)."""
+        if path_type == 'file':
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f"File not found: {path}")
+        elif path_type == 'dir':
+            if not os.path.isdir(path):
+                raise FileNotFoundError(f"Directory not found: {path}")
+       
+    # validating all dirs 
+    def __validate_dirs_embed(cfg: DictConfig):
+        for key in cfg:
+            if key.split('_')[-1] == 'dir':
+                validate_path(key, 'directory')
+            if isinstance(cfg[key], dict):
+                __validate_dirs_embed(key)
+
+    __validate_dirs_embed(cfg=cfg)
+
+    # validating tokenizer 
+    validate_path(cfg['tokenizer']['path'], 'file')
+
+    # validating checkpoint_files
+    checkpoint_dir = cfg['checkpointer']['checkpoint_dir']
+    for checkpoint_file in cfg['checkpointer']['checkpoint_files']:
+        validate_path(os.path.join(checkpoint_dir, checkpoint_file), 'file')
+
+
+    print("All paths validated successfully.")
